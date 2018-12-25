@@ -19,56 +19,68 @@ public class OpenWeatherMapWeatherProvider implements WeatherProvider {
      */
     private static volatile OpenWeatherMapWeatherProvider instance;
 
+    // open weather map API instance
     private OWM owm;
 
     /**
      * Initiate the class with the API Key
      */
     private OpenWeatherMapWeatherProvider() {
-        // Initializa API instance with the api key
+        // Initialize API instance with the api key
         owm = new OWM(getAPIKey());
+        // set metric to always retrieve temperatures in Celsius degree
+        owm.setUnit(Unit.METRIC);
     }
 
     @Override
     public double getCurrentCelsiusTemperatureByCityName(String cityname) {
-
-        double currentCelsiusTemperature = 0D;
+        CurrentWeather cwd = null;
 
         if (!StringUtils.isEmpty(cityname) && !StringUtils.isBlank(cityname)) {
-            CurrentWeather cwd = null;
-            
             try {
-                owm.setUnit(Unit.STANDARD);
                 cwd = owm.currentWeatherByCityName(cityname);
             } catch (APIException e1) {
                 // TODO Auto-generated catch block
                 e1.printStackTrace();
             }
-
-            // checking data retrieval was successful or not
-            if (cwd.hasRespCode() && cwd.getRespCode() == 200) {
-                // checking if max. temp. and min. temp. is available
-                if (cwd.hasMainData() && cwd.getMainData().hasTempMax() && cwd.getMainData().hasTempMin()) {
-                    currentCelsiusTemperature = fromKelvintoCelsius(cwd.getMainData().getTemp());
-                }
-            }
-        }
-        else {
+        } else {
             // TODO Felipe: Throw an NullCityNameException
         }
-        
-        return currentCelsiusTemperature;
+
+        return extractCurrentTemperature(cwd);
+    }
+
+    @Override
+    public double getCurrentCelsiusTemperatureByGeoCoordinates(double latitude, double longitude) {
+        CurrentWeather cwd = null;
+
+        try {
+            cwd = owm.currentWeatherByCoords(latitude, longitude);
+        } catch (APIException e1) {
+            // TODO Auto-generated catch block
+            e1.printStackTrace();
+        }
+
+        return extractCurrentTemperature(cwd);
     }
 
     /**
-     * Kelvin to Degree Celsius Conversion
-     *
-     * @param kelvinTemperature
-     * @return
+     * Extract the current temperature retrieve from open wheater map API
+     * 
+     * @param currentCelsiusTemperature
+     * @param cwd
+     * @return current temperature
      */
-    private double fromKelvintoCelsius(double kelvinTemperature) {
-        System.out.print("temperature before conversion = " + kelvinTemperature);
-        return kelvinTemperature - 273.15D;
+    private double extractCurrentTemperature(CurrentWeather cwd) {
+        double currentCelsiusTemperature = 0D;
+        // checking data retrieval was successful or not
+        if (cwd != null && cwd.hasRespCode() && cwd.getRespCode() == 200) {
+            // checking if max. temp. and min. temp. is available
+            if (cwd.hasMainData() && cwd.getMainData().hasTempMax() && cwd.getMainData().hasTempMin()) {
+                currentCelsiusTemperature = cwd.getMainData().getTemp();
+            }
+        }
+        return currentCelsiusTemperature;
     }
 
     /**
@@ -79,7 +91,7 @@ public class OpenWeatherMapWeatherProvider implements WeatherProvider {
     private static String getAPIKey() {
         return "c6123c1ef8f3229c4ed7a1848107594d";
     }
-    
+
     /**
      * Singleton method to get the instance of OpenWeatherMapWeatherProvider
      *
@@ -87,15 +99,14 @@ public class OpenWeatherMapWeatherProvider implements WeatherProvider {
      */
     public static OpenWeatherMapWeatherProvider getInstance() {
         // double check to avoid synchronizing it
-        if(instance == null) {
+        if (instance == null) {
             synchronized (OpenWeatherMapWeatherProvider.class) {
-                if(instance == null) {
+                if (instance == null) {
                     instance = new OpenWeatherMapWeatherProvider();
                 }
             }
         }
-        
+
         return instance;
     }
-
 }
